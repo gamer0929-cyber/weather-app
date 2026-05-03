@@ -30,41 +30,74 @@ def fetch_weather():
         "locationName": ",".join(LOCATIONS)
     }
 
-    response = requests.get(
-        URL,
-        params=params,
-        verify=False,
-        timeout=15
-    )
-
+    response = requests.get(URL, params=params, verify=False, timeout=15)
     return response.json()
+
+
+def safe_value(item):
+    try:
+        return int(item["elementValue"][0]["value"])
+    except Exception:
+        return None
 
 
 def parse_weather(data):
     results = []
 
-    for loc in data["records"]["locations"][0]["location"]:
-        name = loc["locationName"]
-        elements = {e["elementName"]: e["time"] for e in loc["weatherElement"]}
+    records = data.get("records", {})
+    locations_block = records.get("locations", [])
+
+    # 如果 API 回傳不是我們要的格式，顯示錯誤，不讓網站掛掉
+    if not locations_block:
+        return [{
+            "location": "資料讀取失敗",
+            "period": "請檢查 API",
+            "rain": "API格式不同",
+            "min_temp": "-",
+            "max_temp": "-"
+        }]
+
+    for loc in locations_block[0].get("location", []):
+        name = loc.get("locationName", "未知地區")
+        elements = {
+            e.get("elementName"): e.get("time", [])
+            for e in loc.get("weatherElement", [])
+        }
+
+        pop_data = elements.get("PoP12h", [])
+        min_temp_data = elements.get("MinT", [])
+        max_temp_data = elements.get("MaxT", [])
 
         for label, start, end in PERIODS:
             rain_probs = []
-            temps = []
+            min_temps = []
+            max_temps = []
 
-            for t in elements["PoP12h"]:
+            for t in pop_data:
                 hour = datetime.fromisoformat(t["startTime"]).hour
                 if start <= hour < end:
-                    rain_probs.append(int(t["elementValue"][0]["value"]))
+                    value = safe_value(t)
+                    if value is not None:
+                        rain_probs.append(value)
 
-            for t in elements["MinT"]:
+            for t in min_temp_data:
                 hour = datetime.fromisoformat(t["startTime"]).hour
                 if start <= hour < end:
-                    temps.append(int(t["elementValue"][0]["value"]))
+                    value = safe_value(t)
+                    if value is not None:
+                        min_temps.append(value)
+
+            for t in max_temp_data:
+                hour = datetime.fromisoformat(t["startTime"]).hour
+                if start <= hour < end:
+                    value = safe_value(t)
+                    if value is not None:
+                        max_temps.append(value)
 
             if rain_probs:
                 rain = max(rain_probs)
-                min_temp = min(temps) if temps else "-"
-                max_temp = max(temps) if temps else "-"
+                min_temp = min(min_temps) if min_temps else "-"
+                max_temp = max(max_temps) if max_temps else "-"
 
                 results.append({
                     "location": name,
