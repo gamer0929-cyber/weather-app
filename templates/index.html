@@ -1,36 +1,240 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<title>天氣App</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>天氣監控</title>
+
+<link rel="manifest" href="/static/manifest.json">
 
 <style>
-body {
-    background: #111;
-    color: white;
-    text-align: center;
-}
+    * {
+        box-sizing: border-box;
+    }
 
-.card {
-    margin: 20px;
-    padding: 20px;
-    border: 2px solid #444;
-}
+    body {
+        margin: 0;
+        background: #0f0f0f;
+        color: #ffffff;
+        font-family: Arial, "Microsoft JhengHei", sans-serif;
+    }
+
+    .page {
+        width: 100%;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 28px 16px 60px;
+    }
+
+    .title {
+        text-align: center;
+        font-size: 46px;
+        font-weight: 900;
+        margin: 10px 0 28px;
+        letter-spacing: 2px;
+    }
+
+    .subtitle {
+        text-align: center;
+        color: #cfcfcf;
+        font-size: 18px;
+        margin-bottom: 26px;
+    }
+
+    .location-block {
+        border: 3px solid #444;
+        border-radius: 24px;
+        padding: 24px;
+        margin-bottom: 28px;
+        background: #161616;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+    }
+
+    .location-title {
+        font-size: 42px;
+        font-weight: 900;
+        text-align: center;
+        margin: 0 0 24px;
+        color: #ffffff;
+    }
+
+    .period-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+    }
+
+    .period-card {
+        border: 2px solid #555;
+        border-radius: 20px;
+        padding: 22px 14px;
+        text-align: center;
+        background: #101010;
+        min-height: 210px;
+    }
+
+    .period {
+        font-size: 34px;
+        font-weight: 900;
+        margin-bottom: 20px;
+        color: #ffffff;
+    }
+
+    .rain {
+        font-size: 52px;
+        font-weight: 900;
+        margin-bottom: 14px;
+        line-height: 1.1;
+    }
+
+    .scope {
+        font-size: 24px;
+        font-weight: 800;
+        margin-bottom: 16px;
+        color: #f1f1f1;
+    }
+
+    .temp {
+        font-size: 32px;
+        font-weight: 900;
+        color: #ffffff;
+    }
+
+    .hint {
+        text-align: center;
+        color: #aaa;
+        font-size: 15px;
+        margin-top: 26px;
+    }
+
+    .empty {
+        border: 3px solid #555;
+        border-radius: 24px;
+        padding: 40px 20px;
+        text-align: center;
+        font-size: 32px;
+        font-weight: 900;
+        background: #161616;
+    }
+
+    @media (max-width: 1000px) {
+        .period-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .title {
+            font-size: 42px;
+        }
+
+        .location-title {
+            font-size: 38px;
+        }
+    }
+
+    @media (max-width: 560px) {
+        .page {
+            padding: 20px 10px 40px;
+        }
+
+        .title {
+            font-size: 34px;
+        }
+
+        .subtitle {
+            font-size: 15px;
+        }
+
+        .location-block {
+            padding: 16px;
+            border-radius: 18px;
+        }
+
+        .location-title {
+            font-size: 34px;
+        }
+
+        .period-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .period-card {
+            min-height: 185px;
+            padding: 20px 12px;
+        }
+
+        .period {
+            font-size: 34px;
+        }
+
+        .rain {
+            font-size: 54px;
+        }
+
+        .scope {
+            font-size: 24px;
+        }
+
+        .temp {
+            font-size: 32px;
+        }
+    }
 </style>
-
 </head>
 
 <body>
+<div class="page">
 
-<h1>🌤 天氣監控</h1>
+    <div class="title">🌦 天氣監控</div>
+    <div class="subtitle">釘選地區：大園區、中壢區｜今日分時段降雨與溫度</div>
 
-{% for w in weather %}
-<div class="card">
-    <h2>{{w.location}}｜{{w.period}}</h2>
-    <h1>🌧 {{w.rain}}%</h1>
-    <h3>{{w.min_temp}} ~ {{w.max_temp}}°C</h3>
+    {% if weather and weather|length > 0 %}
+
+        {% set locations = [] %}
+
+        {% for w in weather %}
+            {% if w.location not in locations %}
+                {% set _ = locations.append(w.location) %}
+            {% endif %}
+        {% endfor %}
+
+        {% for location in locations %}
+        <section class="location-block">
+            <h2 class="location-title">📍 {{ location }}</h2>
+
+            <div class="period-grid">
+                {% for w in weather %}
+                    {% if w.location == location %}
+                    <div class="period-card">
+                        <div class="period">{{ w.period }}</div>
+
+                        <div class="rain">
+                            🌧 {{ w.rain }}%
+                        </div>
+
+                        <div class="scope">
+                            {{ w.scope if w.scope else "降雨資訊" }}
+                        </div>
+
+                        <div class="temp">
+                            🌡 {{ w.min_temp }} ~ {{ w.max_temp }}°C
+                        </div>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </section>
+        {% endfor %}
+
+    {% else %}
+        <div class="empty">
+            資料讀取中或暫無資料
+        </div>
+    {% endif %}
+
+    <div class="hint">
+        免費 Render 方案若休眠，第一次開啟可能需要等待 30～60 秒。
+    </div>
+
 </div>
-{% endfor %}
-
 </body>
 </html>
