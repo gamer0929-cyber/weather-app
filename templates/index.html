@@ -33,6 +33,22 @@
             letter-spacing: 2px;
         }
 
+        .date-year {
+            color: #4da3ff;
+        }
+
+        .date-month {
+            color: #ff9f1c;
+        }
+
+        .date-day {
+            color: #ff3b30;
+        }
+
+        .date-symbol {
+            color: #ffffff;
+        }
+
         .subtitle {
             text-align: center;
             font-size: 24px;
@@ -267,7 +283,16 @@
 <body>
 <div class="page">
 
-    <div class="title">🌦 勤駛皇 <span id="today-date"></span> の天氣預報</div>
+    <div class="title">
+        🌦 勤駛皇
+        <span id="year-text" class="date-year"></span>
+        <span class="date-symbol">-</span>
+        <span id="month-text" class="date-month"></span>
+        <span class="date-symbol">-</span>
+        <span id="day-text" class="date-day"></span>
+        の天氣預報
+    </div>
+
     <div class="subtitle">釘選地區：大園區、中壢區｜今日分時段降雨與溫度</div>
 
     <section class="location-block">
@@ -306,7 +331,7 @@
                         {% set icon_class = "time-icon" %}
                     {% endif %}
 
-                    {% if rain_value >= 50 %}
+                    {% if rain_value >= 70 %}
                         {% set rain_border_class = "rain-border-high" %}
                     {% elif rain_value >= 30 %}
                         {% set rain_border_class = "rain-border-mid" %}
@@ -400,7 +425,7 @@
                         {% set icon_class = "time-icon" %}
                     {% endif %}
 
-                    {% if rain_value >= 50 %}
+                    {% if rain_value >= 70 %}
                         {% set rain_border_class = "rain-border-high" %}
                     {% elif rain_value >= 30 %}
                         {% set rain_border_class = "rain-border-mid" %}
@@ -470,7 +495,9 @@
     const month = String(today.getMonth() + 1).padStart(2, "0");
     const day = String(today.getDate()).padStart(2, "0");
 
-    document.getElementById("today-date").textContent = `${year}-${month}-${day}`;
+    document.getElementById("year-text").textContent = year;
+    document.getElementById("month-text").textContent = month;
+    document.getElementById("day-text").textContent = day;
 </script>
 
 </body>
