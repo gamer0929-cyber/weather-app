@@ -1,11 +1,12 @@
 from flask import Flask, render_template
 import requests
 from datetime import datetime
+import os
 
 app = Flask(__name__)
 
-API_KEY = "請填你的API KEY"
-LINE_TOKEN = "請填你的LINE TOKEN"
+API_KEY = os.getenv("API_KEY")
+LINE_TOKEN = os.getenv("LINE_TOKEN", "")
 
 LOCATIONS = ["大園區", "中壢區"]
 
