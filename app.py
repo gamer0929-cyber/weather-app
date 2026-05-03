@@ -1,7 +1,10 @@
 from flask import Flask, render_template
 import requests
+import urllib3
 from datetime import datetime
 import os
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 app = Flask(__name__)
 
@@ -26,29 +29,37 @@ def fetch_weather():
         "format": "JSON",
         "locationName": ",".join(LOCATIONS)
     }
-    return requests.get(URL, params=params).json()
+
+    response = requests.get(
+        URL,
+        params=params,
+        verify=False,
+        timeout=15
+    )
+
+    return response.json()
 
 
 def parse_weather(data):
     results = []
 
-    for loc in data['records']['locations'][0]['location']:
-        name = loc['locationName']
-        elements = {e['elementName']: e['time'] for e in loc['weatherElement']}
+    for loc in data["records"]["locations"][0]["location"]:
+        name = loc["locationName"]
+        elements = {e["elementName"]: e["time"] for e in loc["weatherElement"]}
 
         for label, start, end in PERIODS:
             rain_probs = []
             temps = []
 
-            for t in elements['PoP12h']:
-                hour = datetime.fromisoformat(t['startTime']).hour
+            for t in elements["PoP12h"]:
+                hour = datetime.fromisoformat(t["startTime"]).hour
                 if start <= hour < end:
-                    rain_probs.append(int(t['elementValue'][0]['value']))
+                    rain_probs.append(int(t["elementValue"][0]["value"]))
 
-            for t in elements['MinT']:
-                hour = datetime.fromisoformat(t['startTime']).hour
+            for t in elements["MinT"]:
+                hour = datetime.fromisoformat(t["startTime"]).hour
                 if start <= hour < end:
-                    temps.append(int(t['elementValue'][0]['value']))
+                    temps.append(int(t["elementValue"][0]["value"]))
 
             if rain_probs:
                 rain = max(rain_probs)
