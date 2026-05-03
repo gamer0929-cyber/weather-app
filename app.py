@@ -38,7 +38,8 @@ def fetch_weather():
 
     params = {
         "Authorization": API_KEY,
-        "format": "JSON"
+        "format": "JSON",
+        "locationName": ",".join(PINNED_LOCATIONS)
     }
 
     try:
@@ -50,23 +51,12 @@ def fetch_weather():
         )
 
         try:
-            data = response.json()
+            return response.json()
         except Exception:
             return {
                 "success": "false",
-                "message": "CWA 回傳不是 JSON",
-                "status_code": response.status_code,
-                "text": response.text[:300]
+                "message": "CWA 回傳不是 JSON"
             }
-
-        if response.status_code != 200:
-            return {
-                "success": "false",
-                "message": f"HTTP {response.status_code}",
-                "data": data
-            }
-
-        return data
 
     except Exception as e:
         return {
@@ -75,100 +65,83 @@ def fetch_weather():
         }
 
 
-def get_first_value(obj):
-    if obj is None:
-        return None
+def get_locations(data):
+    records = data.get("records", {})
 
-    if isinstance(obj, (int, float)):
-        return int(obj)
+    groups = records.get("locations") or records.get("Locations") or []
 
-    if isinstance(obj, str):
-        text = obj.strip()
-        if text == "":
-            return None
-        try:
-            return int(float(text))
-        except Exception:
-            return text
+    all_locations = []
 
-    if isinstance(obj, list):
-        for item in obj:
-            value = get_first_value(item)
-            if value is not None:
-                return value
-        return None
+    if groups:
+        for group in groups:
+            items = group.get("location") or group.get("Location") or []
+            all_locations.extend(items)
 
-    if isinstance(obj, dict):
-        priority_keys = [
-            "value",
-            "Value",
-            "Temperature",
-            "MinTemperature",
-            "MaxTemperature",
-            "ProbabilityOfPrecipitation",
-            "Weather",
-            "WeatherDescription"
-        ]
+    direct_locations = records.get("location") or records.get("Location") or []
+    all_locations.extend(direct_locations)
 
-        for key in priority_keys:
-            if key in obj:
-                value = get_first_value(obj.get(key))
-                if value is not None:
-                    return value
-
-        for value in obj.values():
-            found = get_first_value(value)
-            if found is not None:
-                return found
-
-    return None
+    return all_locations
 
 
-def get_start_time(time_item):
+def get_name(loc):
     return (
-        time_item.get("startTime")
-        or time_item.get("StartTime")
-        or time_item.get("dataTime")
-        or time_item.get("DataTime")
+        loc.get("locationName")
+        or loc.get("LocationName")
+        or loc.get("townName")
+        or loc.get("TownName")
+        or ""
     )
 
 
-def get_end_time(time_item):
-    return (
-        time_item.get("endTime")
-        or time_item.get("EndTime")
-        or get_start_time(time_item)
-    )
+def get_elements(loc):
+    return loc.get("weatherElement") or loc.get("WeatherElement") or []
 
 
-def parse_time(time_text):
-    if not time_text:
+def get_element_name(element):
+    return element.get("elementName") or element.get("ElementName") or ""
+
+
+def get_times(element):
+    return element.get("time") or element.get("Time") or []
+
+
+def parse_time(text):
+    if not text:
         return None
 
-    text = str(time_text).replace("Z", "+00:00")
+    text = str(text).replace("Z", "+00:00")
 
     try:
         return datetime.fromisoformat(text)
     except Exception:
-        pass
-
-    try:
-        return datetime.strptime(str(time_text)[:19], "%Y-%m-%d %H:%M:%S")
-    except Exception:
-        return None
+        try:
+            return datetime.strptime(text[:19], "%Y-%m-%d %H:%M:%S")
+        except Exception:
+            return None
 
 
-def time_overlaps_period(time_item, period_start_hour, period_end_hour, target_date):
-    start_text = get_start_time(time_item)
-    end_text = get_end_time(time_item)
+def get_start(t):
+    return (
+        t.get("startTime")
+        or t.get("StartTime")
+        or t.get("dataTime")
+        or t.get("DataTime")
+    )
 
-    start_dt = parse_time(start_text)
-    end_dt = parse_time(end_text)
+
+def get_end(t):
+    return (
+        t.get("endTime")
+        or t.get("EndTime")
+        or get_start(t)
+    )
+
+
+def overlaps(t, period_start, period_end):
+    start_dt = parse_time(get_start(t))
+    end_dt = parse_time(get_end(t))
 
     if not start_dt:
-        return False
-
-    if start_dt.date() != target_date:
         return False
 
     start_hour = start_dt.hour
@@ -179,123 +152,41 @@ def time_overlaps_period(time_item, period_start_hour, period_end_hour, target_d
         if end_dt.date() > start_dt.date():
             end_hour = 24
 
-        return start_hour < period_end_hour and end_hour > period_start_hour
+        return start_hour < period_end and end_hour > period_start
 
-    return period_start_hour <= start_hour < period_end_hour
-
-
-def get_location_name(loc):
-    return (
-        loc.get("locationName")
-        or loc.get("LocationName")
-        or loc.get("townName")
-        or loc.get("TownName")
-        or loc.get("name")
-        or loc.get("Name")
-        or ""
-    )
+    return period_start <= start_hour < period_end
 
 
-def get_weather_elements(loc):
-    return (
-        loc.get("weatherElement")
-        or loc.get("WeatherElement")
-        or []
-    )
+def extract_value(t):
+    values = t.get("elementValue") or t.get("ElementValue") or []
 
-
-def get_element_name(element):
-    return (
-        element.get("elementName")
-        or element.get("ElementName")
-        or ""
-    )
-
-
-def get_element_times(element):
-    return (
-        element.get("time")
-        or element.get("Time")
-        or []
-    )
-
-
-def collect_target_locations(obj, target_names):
-    found = []
-
-    if isinstance(obj, dict):
-        name = normalize_name(get_location_name(obj))
-        elements = get_weather_elements(obj)
-
-        if name in target_names and elements:
-            found.append(obj)
-
-        for value in obj.values():
-            found.extend(collect_target_locations(value, target_names))
-
-    elif isinstance(obj, list):
-        for item in obj:
-            found.extend(collect_target_locations(item, target_names))
-
-    return found
-
-
-def pick_target_date(elements):
-    dates = []
-
-    for times in elements.values():
-        for t in times:
-            dt = parse_time(get_start_time(t))
-            if dt:
-                dates.append(dt.date())
-
-    if not dates:
+    if not values:
         return None
 
-    return min(dates)
+    value_obj = values[0]
 
+    keys = [
+        "value",
+        "Value",
+        "ProbabilityOfPrecipitation",
+        "Temperature",
+        "MinTemperature",
+        "MaxTemperature"
+    ]
 
-def is_rain_element(name):
-    n = str(name)
-    return (
-        "PoP" in n
-        or "降雨機率" in n
-        or "降雨" in n
-    )
+    for key in keys:
+        if key in value_obj:
+            raw = value_obj.get(key)
 
+            try:
+                return int(float(raw))
+            except Exception:
+                return None
 
-def is_min_temp_element(name):
-    n = str(name)
-    return (
-        n == "MinT"
-        or "最低溫" in n
-        or "最低溫度" in n
-        or "MinTemperature" in n
-    )
-
-
-def is_max_temp_element(name):
-    n = str(name)
-    return (
-        n == "MaxT"
-        or "最高溫" in n
-        or "最高溫度" in n
-        or "MaxTemperature" in n
-    )
-
-
-def is_temp_element(name):
-    n = str(name)
-    return (
-        n == "T"
-        or n == "溫度"
-        or "Temperature" in n
-    )
+    return None
 
 
 def parse_weather(data):
-    results = []
-
     if data.get("success") == "false":
         return [{
             "location": "資料讀取失敗",
@@ -305,110 +196,86 @@ def parse_weather(data):
             "max_temp": "-"
         }]
 
-    target_names = [normalize_name(x) for x in PINNED_LOCATIONS]
-    locations = collect_target_locations(data, target_names)
+    results = []
+    targets = [normalize_name(x) for x in PINNED_LOCATIONS]
+    locations = get_locations(data)
 
     if not locations:
         return [{
-            "location": "找不到釘選地區",
-            "period": "大園區 / 中壢區",
+            "location": "資料讀取失敗",
+            "period": "API無資料",
             "rain": "-",
             "min_temp": "-",
             "max_temp": "-"
         }]
 
     for loc in locations:
-        name = normalize_name(get_location_name(loc))
+        name = normalize_name(get_name(loc))
 
-        elements = {}
-
-        for element in get_weather_elements(loc):
-            element_name = get_element_name(element)
-            element_times = get_element_times(element)
-
-            if element_name and element_times:
-                elements[element_name] = element_times
-
-        target_date = pick_target_date(elements)
-
-        if not target_date:
+        if name not in targets:
             continue
 
-        rain_sources = []
-        min_temp_sources = []
-        max_temp_sources = []
-        temp_sources = []
+        element_map = {}
 
-        for element_name, times in elements.items():
-            if is_rain_element(element_name):
-                rain_sources.extend(times)
+        for element in get_elements(loc):
+            element_name = get_element_name(element)
+            element_map[element_name] = get_times(element)
 
-            if is_min_temp_element(element_name):
-                min_temp_sources.extend(times)
+        rain_data = (
+            element_map.get("PoP12h")
+            or element_map.get("PoP6h")
+            or element_map.get("PoP3h")
+            or element_map.get("PoP")
+            or []
+        )
 
-            if is_max_temp_element(element_name):
-                max_temp_sources.extend(times)
+        min_temp_data = (
+            element_map.get("MinT")
+            or element_map.get("T")
+            or []
+        )
 
-            if is_temp_element(element_name):
-                temp_sources.extend(times)
-
-        if not min_temp_sources:
-            min_temp_sources = temp_sources
-
-        if not max_temp_sources:
-            max_temp_sources = temp_sources
+        max_temp_data = (
+            element_map.get("MaxT")
+            or element_map.get("T")
+            or []
+        )
 
         for label, period_start, period_end in PERIODS:
             rain_probs = []
             min_temps = []
             max_temps = []
 
-            for t in rain_sources:
-                if time_overlaps_period(t, period_start, period_end, target_date):
-                    value = get_first_value(
-                        t.get("elementValue")
-                        or t.get("ElementValue")
-                        or t
-                    )
-                    if isinstance(value, int):
+            for t in rain_data:
+                if overlaps(t, period_start, period_end):
+                    value = extract_value(t)
+                    if value is not None:
                         rain_probs.append(value)
 
-            for t in min_temp_sources:
-                if time_overlaps_period(t, period_start, period_end, target_date):
-                    value = get_first_value(
-                        t.get("elementValue")
-                        or t.get("ElementValue")
-                        or t
-                    )
-                    if isinstance(value, int):
+            for t in min_temp_data:
+                if overlaps(t, period_start, period_end):
+                    value = extract_value(t)
+                    if value is not None:
                         min_temps.append(value)
 
-            for t in max_temp_sources:
-                if time_overlaps_period(t, period_start, period_end, target_date):
-                    value = get_first_value(
-                        t.get("elementValue")
-                        or t.get("ElementValue")
-                        or t
-                    )
-                    if isinstance(value, int):
+            for t in max_temp_data:
+                if overlaps(t, period_start, period_end):
+                    value = extract_value(t)
+                    if value is not None:
                         max_temps.append(value)
-
-            rain = max(rain_probs) if rain_probs else "-"
-            min_temp = min(min_temps) if min_temps else "-"
-            max_temp = max(max_temps) if max_temps else "-"
 
             results.append({
                 "location": name,
                 "period": label,
-                "rain": rain,
-                "min_temp": min_temp,
-                "max_temp": max_temp
+                "rain": max(rain_probs) if rain_probs else "-",
+                "min_temp": min(min_temps) if min_temps else "-",
+                "max_temp": max(max_temps) if max_temps else "-"
             })
 
     if not results:
         return [{
-            "location": "資料讀取失敗",
-            "period": "有找到地區，但沒有時段資料",
+            "location": "找不到釘選地區",
+            "period": "大園區 / 中壢區",
             "rain": "-",
             "min_temp": "-",
             "max_temp": "-"
