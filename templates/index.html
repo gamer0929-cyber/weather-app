@@ -13,46 +13,46 @@
 
         body {
             margin: 0;
-            background: #0a0a0a;
+            background: #050505;
             color: #ffffff;
             font-family: Arial, "Microsoft JhengHei", sans-serif;
         }
 
         .page {
             width: 100%;
-            max-width: 1600px;
+            max-width: 1700px;
             margin: 0 auto;
-            padding: 24px 18px 60px;
+            padding: 24px 16px 60px;
         }
 
         .title {
             text-align: center;
-            font-size: 72px;
+            font-size: 68px;
             font-weight: 900;
-            margin: 10px 0 12px;
+            margin: 8px 0 12px;
             letter-spacing: 2px;
         }
 
         .subtitle {
             text-align: center;
             font-size: 24px;
-            color: #d9d9d9;
+            color: #d7d7d7;
             margin-bottom: 28px;
             font-weight: 700;
         }
 
         .location-block {
-            background: #151515;
-            border: 3px solid #353535;
+            background: #121212;
+            border: 3px solid #2b2b2b;
             border-radius: 34px;
-            padding: 26px 24px 30px;
+            padding: 26px 22px 30px;
             margin-bottom: 34px;
-            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.35);
         }
 
         .location-title {
             text-align: center;
-            font-size: 64px;
+            font-size: 60px;
             font-weight: 900;
             margin: 0 0 24px;
             color: #ffffff;
@@ -69,56 +69,93 @@
         }
 
         .period-card {
-            background: #050505;
-            border: 2px solid #4b4b4b;
             border-radius: 28px;
-            padding: 20px 16px 24px;
-            min-height: 360px;
+            padding: 18px 16px 24px;
+            min-height: 420px;
             text-align: center;
             display: flex;
             flex-direction: column;
             justify-content: flex-start;
+            border: 4px solid #5a5a5a;
+            box-shadow: 0 12px 24px rgba(0,0,0,0.25);
+            transition: transform 0.2s ease;
         }
 
-        .period-icon {
+        .period-card:hover {
+            transform: translateY(-2px);
+        }
+
+        /* 時段底色 */
+        .morning-card {
+            background: linear-gradient(180deg, #2d1e0f 0%, #15110c 100%);
+        }
+
+        .noon-card {
+            background: linear-gradient(180deg, #33270b 0%, #18140a 100%);
+        }
+
+        .afternoon-card {
+            background: linear-gradient(180deg, #2b180f 0%, #16100c 100%);
+        }
+
+        .night-card {
+            background: linear-gradient(180deg, #14192d 0%, #0e1019 100%);
+        }
+
+        /* 降雨外框顏色 */
+        .rain-border-low {
+            border-color: #6c6c6c;
+        }
+
+        .rain-border-mid {
+            border-color: #ff9f1c;
+            box-shadow: 0 0 0 1px rgba(255,159,28,0.25), 0 12px 24px rgba(0,0,0,0.25);
+        }
+
+        .rain-border-high {
+            border-color: #ff453a;
+            box-shadow: 0 0 0 1px rgba(255,69,58,0.25), 0 12px 24px rgba(0,0,0,0.25);
+        }
+
+        .time-icon {
             font-size: 42px;
             line-height: 1;
-            margin-bottom: 14px;
+            margin-bottom: 10px;
         }
 
         .period {
-            font-size: 36px;
+            font-size: 34px;
             font-weight: 900;
-            line-height: 1.25;
-            margin-bottom: 26px;
-            min-height: 92px;
+            line-height: 1.35;
+            margin-bottom: 22px;
+            min-height: 95px;
             display: flex;
             align-items: center;
             justify-content: center;
         }
 
         .rain {
-            font-size: 64px;
+            font-size: 60px;
             font-weight: 900;
             line-height: 1.1;
-            margin-bottom: 18px;
+            margin-bottom: 16px;
         }
 
         .weather-icon {
             display: inline-block;
             margin-right: 8px;
-            filter: grayscale(0%);
+            vertical-align: middle;
         }
 
         .scope {
-            font-size: 28px;
+            font-size: 26px;
             font-weight: 900;
             margin-bottom: 22px;
             color: #f1f1f1;
         }
 
         .temp {
-            font-size: 42px;
+            font-size: 40px;
             font-weight: 900;
             line-height: 1.2;
             margin-top: auto;
@@ -144,31 +181,31 @@
         .notice {
             text-align: center;
             font-size: 18px;
-            color: #aaaaaa;
+            color: #9d9d9d;
             margin-top: 28px;
         }
 
-        @media (max-width: 1280px) {
+        @media (max-width: 1300px) {
             .period-grid {
                 grid-template-columns: repeat(2, 1fr);
             }
 
             .title {
-                font-size: 58px;
+                font-size: 54px;
             }
 
             .location-title {
-                font-size: 52px;
+                font-size: 48px;
             }
         }
 
-        @media (max-width: 700px) {
+        @media (max-width: 760px) {
             .page {
-                padding: 16px 10px 38px;
+                padding: 16px 10px 40px;
             }
 
             .title {
-                font-size: 42px;
+                font-size: 40px;
             }
 
             .subtitle {
@@ -176,13 +213,8 @@
                 line-height: 1.5;
             }
 
-            .location-block {
-                border-radius: 24px;
-                padding: 16px 14px 20px;
-            }
-
             .location-title {
-                font-size: 40px;
+                font-size: 38px;
             }
 
             .period-grid {
@@ -190,22 +222,21 @@
             }
 
             .period-card {
-                min-height: 300px;
+                min-height: 340px;
             }
 
-            .period-icon {
-                font-size: 36px;
-                margin-bottom: 10px;
+            .time-icon {
+                font-size: 34px;
             }
 
             .period {
-                font-size: 30px;
+                font-size: 28px;
                 min-height: auto;
-                margin-bottom: 20px;
+                margin-bottom: 18px;
             }
 
             .rain {
-                font-size: 54px;
+                font-size: 52px;
             }
 
             .scope {
@@ -231,36 +262,52 @@
         <div class="period-grid">
             {% for w in weather %}
                 {% if w.location == "大園區" %}
-                <div class="period-card">
+
+                    {% set rain_value = w.rain|int if w.rain != "-" else 0 %}
 
                     {% if w.period == "06-11" %}
-                        <div class="period-icon">🌅</div>
-                        <div class="period">上午：06 ~ 11</div>
+                        {% set time_icon = "🌅" %}
+                        {% set time_text = "上午：06 ~ 11" %}
+                        {% set time_class = "morning-card" %}
                     {% elif w.period == "11-14" %}
-                        <div class="period-icon">☀️</div>
-                        <div class="period">中午：11 ~ 14</div>
+                        {% set time_icon = "☀️" %}
+                        {% set time_text = "中午：11 ~ 14" %}
+                        {% set time_class = "noon-card" %}
                     {% elif w.period == "14-17" %}
-                        <div class="period-icon">🌤️</div>
-                        <div class="period">下午：14 ~ 17</div>
+                        {% set time_icon = "🌤️" %}
+                        {% set time_text = "下午：14 ~ 17" %}
+                        {% set time_class = "afternoon-card" %}
                     {% elif w.period == "17-24" %}
-                        <div class="period-icon">🌙</div>
-                        <div class="period">晚上：17 ~ 24</div>
+                        {% set time_icon = "🌙" %}
+                        {% set time_text = "晚上：17 ~ 24" %}
+                        {% set time_class = "night-card" %}
                     {% else %}
-                        <div class="period-icon">🕒</div>
-                        <div class="period">{{ w.period }}</div>
+                        {% set time_icon = "🕒" %}
+                        {% set time_text = w.period %}
+                        {% set time_class = "morning-card" %}
                     {% endif %}
 
+                    {% if rain_value >= 50 %}
+                        {% set rain_border_class = "rain-border-high" %}
+                    {% elif rain_value >= 30 %}
+                        {% set rain_border_class = "rain-border-mid" %}
+                    {% else %}
+                        {% set rain_border_class = "rain-border-low" %}
+                    {% endif %}
+
+                <div class="period-card {{ time_class }} {{ rain_border_class }}">
+                    <div class="time-icon">{{ time_icon }}</div>
+                    <div class="period">{{ time_text }}</div>
+
                     <div class="rain">
-                        {% if w.rain != "-" and w.rain|int == 0 %}
-                            <span class="weather-icon">☁️</span>{{ w.rain }}%
-                        {% elif w.rain != "-" and w.rain|int <= 29 %}
-                            <span class="weather-icon">🌦️</span>{{ w.rain }}%
-                        {% elif w.rain != "-" and w.rain|int <= 69 %}
-                            <span class="weather-icon">🌧️</span>{{ w.rain }}%
-                        {% elif w.rain != "-" and w.rain|int >= 70 %}
-                            <span class="weather-icon">☔</span>{{ w.rain }}%
+                        {% if rain_value == 0 %}
+                            <span class="weather-icon">☁️</span>{{ rain_value }}%
+                        {% elif rain_value <= 29 %}
+                            <span class="weather-icon">🌦️</span>{{ rain_value }}%
+                        {% elif rain_value <= 69 %}
+                            <span class="weather-icon">🌧️</span>{{ rain_value }}%
                         {% else %}
-                            <span class="weather-icon">☁️</span>{{ w.rain }}%
+                            <span class="weather-icon">☔</span>{{ rain_value }}%
                         {% endif %}
                     </div>
 
@@ -292,7 +339,6 @@
                         {% endif %}
                         °C
                     </div>
-
                 </div>
                 {% endif %}
             {% endfor %}
@@ -306,36 +352,52 @@
         <div class="period-grid">
             {% for w in weather %}
                 {% if w.location == "中壢區" %}
-                <div class="period-card">
+
+                    {% set rain_value = w.rain|int if w.rain != "-" else 0 %}
 
                     {% if w.period == "06-11" %}
-                        <div class="period-icon">🌅</div>
-                        <div class="period">上午：06 ~ 11</div>
+                        {% set time_icon = "🌅" %}
+                        {% set time_text = "上午：06 ~ 11" %}
+                        {% set time_class = "morning-card" %}
                     {% elif w.period == "11-14" %}
-                        <div class="period-icon">☀️</div>
-                        <div class="period">中午：11 ~ 14</div>
+                        {% set time_icon = "☀️" %}
+                        {% set time_text = "中午：11 ~ 14" %}
+                        {% set time_class = "noon-card" %}
                     {% elif w.period == "14-17" %}
-                        <div class="period-icon">🌤️</div>
-                        <div class="period">下午：14 ~ 17</div>
+                        {% set time_icon = "🌤️" %}
+                        {% set time_text = "下午：14 ~ 17" %}
+                        {% set time_class = "afternoon-card" %}
                     {% elif w.period == "17-24" %}
-                        <div class="period-icon">🌙</div>
-                        <div class="period">晚上：17 ~ 24</div>
+                        {% set time_icon = "🌙" %}
+                        {% set time_text = "晚上：17 ~ 24" %}
+                        {% set time_class = "night-card" %}
                     {% else %}
-                        <div class="period-icon">🕒</div>
-                        <div class="period">{{ w.period }}</div>
+                        {% set time_icon = "🕒" %}
+                        {% set time_text = w.period %}
+                        {% set time_class = "morning-card" %}
                     {% endif %}
 
+                    {% if rain_value >= 50 %}
+                        {% set rain_border_class = "rain-border-high" %}
+                    {% elif rain_value >= 30 %}
+                        {% set rain_border_class = "rain-border-mid" %}
+                    {% else %}
+                        {% set rain_border_class = "rain-border-low" %}
+                    {% endif %}
+
+                <div class="period-card {{ time_class }} {{ rain_border_class }}">
+                    <div class="time-icon">{{ time_icon }}</div>
+                    <div class="period">{{ time_text }}</div>
+
                     <div class="rain">
-                        {% if w.rain != "-" and w.rain|int == 0 %}
-                            <span class="weather-icon">☁️</span>{{ w.rain }}%
-                        {% elif w.rain != "-" and w.rain|int <= 29 %}
-                            <span class="weather-icon">🌦️</span>{{ w.rain }}%
-                        {% elif w.rain != "-" and w.rain|int <= 69 %}
-                            <span class="weather-icon">🌧️</span>{{ w.rain }}%
-                        {% elif w.rain != "-" and w.rain|int >= 70 %}
-                            <span class="weather-icon">☔</span>{{ w.rain }}%
+                        {% if rain_value == 0 %}
+                            <span class="weather-icon">☁️</span>{{ rain_value }}%
+                        {% elif rain_value <= 29 %}
+                            <span class="weather-icon">🌦️</span>{{ rain_value }}%
+                        {% elif rain_value <= 69 %}
+                            <span class="weather-icon">🌧️</span>{{ rain_value }}%
                         {% else %}
-                            <span class="weather-icon">☁️</span>{{ w.rain }}%
+                            <span class="weather-icon">☔</span>{{ rain_value }}%
                         {% endif %}
                     </div>
 
@@ -367,7 +429,6 @@
                         {% endif %}
                         °C
                     </div>
-
                 </div>
                 {% endif %}
             {% endfor %}
