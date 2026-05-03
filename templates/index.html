@@ -85,7 +85,6 @@
             transform: translateY(-2px);
         }
 
-        /* 時段底色 */
         .morning-card {
             background: linear-gradient(180deg, #2d1e0f 0%, #15110c 100%);
         }
@@ -102,7 +101,6 @@
             background: linear-gradient(180deg, #071329 0%, #050814 55%, #02040b 100%);
         }
 
-        /* 降雨外框顏色 */
         .rain-border-low {
             border-color: #6c6c6c;
         }
@@ -269,10 +267,9 @@
 <body>
 <div class="page">
 
-    <div class="title">🌦 勤駛皇の天氣預報</div>
+    <div class="title">🌦 勤駛皇 <span id="today-date"></span> の天氣預報</div>
     <div class="subtitle">釘選地區：大園區、中壢區｜今日分時段降雨與溫度</div>
 
-    <!-- 大園區 -->
     <section class="location-block">
         <h2 class="location-title"><span class="pin">📍</span>大園區</h2>
 
@@ -367,7 +364,6 @@
         </div>
     </section>
 
-    <!-- 中壢區 -->
     <section class="location-block">
         <h2 class="location-title"><span class="pin">📍</span>中壢區</h2>
 
@@ -467,5 +463,15 @@
     </div>
 
 </div>
+
+<script>
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+
+    document.getElementById("today-date").textContent = `${year}-${month}-${day}`;
+</script>
+
 </body>
 </html>
