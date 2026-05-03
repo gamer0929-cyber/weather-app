@@ -4,7 +4,6 @@ import urllib3
 from datetime import datetime
 import os
 
-# Render 連 CWA 有時 SSL 驗證會失敗，先關閉警告
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 app = Flask(__name__)
@@ -12,10 +11,8 @@ app = Flask(__name__)
 API_KEY = os.getenv("API_KEY")
 LINE_TOKEN = os.getenv("LINE_TOKEN", "")
 
-# 只顯示你釘選的地區
 PINNED_LOCATIONS = ["大園區", "中壢區"]
 
-# 你指定的顯示時段
 PERIODS = [
     ("06-11", 6, 11),
     ("11-14", 11, 14),
@@ -23,8 +20,8 @@ PERIODS = [
     ("17-24", 17, 24)
 ]
 
-# 全臺鄉鎮市區預報資料集
-URL = "https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-093"
+# 桃園市未來2天天氣預報
+URL = "https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-005"
 
 
 def normalize_name(name):
@@ -34,9 +31,16 @@ def normalize_name(name):
 
 
 def fetch_weather():
+    if not API_KEY:
+        return {
+            "success": "false",
+            "message": "API_KEY 未設定"
+        }
+
     params = {
         "Authorization": API_KEY,
-        "format": "JSON"
+        "format": "JSON",
+        "locationName": ",".join(PINNED_LOCATIONS)
     }
 
     try:
@@ -47,22 +51,31 @@ def fetch_weather():
             verify=False
         )
 
-        data = response.json()
+        try:
+            data = response.json()
+        except Exception:
+            return {
+                "success": "false",
+                "message": "CWA 回傳不是 JSON",
+                "status_code": response.status_code,
+                "text": response.text[:300]
+            }
 
-        if "records" not in data:
-            print("API 回傳異常：", data)
+        if response.status_code != 200:
+            data["http_status"] = response.status_code
 
         return data
 
     except Exception as e:
-        print("API讀取失敗：", e)
-        return {}
+        return {
+            "success": "false",
+            "message": f"API讀取失敗：{e}"
+        }
 
 
 def get_records_locations(data):
     records = data.get("records", {})
 
-    # 格式 1：records.locations[0].location
     groups = records.get("locations") or records.get("Locations") or []
 
     if groups:
@@ -78,7 +91,6 @@ def get_records_locations(data):
 
         return all_locations
 
-    # 格式 2：records.location
     return records.get("location") or records.get("Location") or []
 
 
@@ -137,15 +149,17 @@ def parse_time(time_text):
     if not time_text:
         return None
 
+    text = str(time_text).replace("Z", "+00:00")
+
     try:
-        return datetime.fromisoformat(
-            str(time_text).replace("Z", "+00:00")
-        )
+        return datetime.fromisoformat(text)
     except Exception:
-        try:
-            return datetime.strptime(str(time_text)[:19], "%Y-%m-%d %H:%M:%S")
-        except Exception:
-            return None
+        pass
+
+    try:
+        return datetime.strptime(str(time_text)[:19], "%Y-%m-%d %H:%M:%S")
+    except Exception:
+        return None
 
 
 def get_value(time_item):
@@ -167,22 +181,21 @@ def get_value(time_item):
         "Temperature",
         "MinTemperature",
         "MaxTemperature",
-        "DewPoint",
         "Weather",
         "WeatherDescription"
     ]
 
     for key in possible_keys:
         if key in value_obj:
-            raw_value = value_obj.get(key)
+            raw = value_obj.get(key)
 
-            if raw_value in [None, ""]:
+            if raw in [None, ""]:
                 return None
 
             try:
-                return int(raw_value)
+                return int(raw)
             except Exception:
-                return raw_value
+                return raw
 
     return None
 
@@ -202,7 +215,6 @@ def time_overlaps_period(time_item, period_start_hour, period_end_hour):
     if end_dt:
         end_hour = end_dt.hour
 
-        # 跨日或 24:00 類型處理
         if end_dt.date() > start_dt.date():
             end_hour = 24
 
@@ -214,7 +226,15 @@ def time_overlaps_period(time_item, period_start_hour, period_end_hour):
 def parse_weather(data):
     results = []
 
-    target_locations = [normalize_name(x) for x in PINNED_LOCATIONS]
+    if data.get("success") == "false":
+        return [{
+            "location": "資料讀取失敗",
+            "period": data.get("message", "API錯誤"),
+            "rain": "-",
+            "min_temp": "-",
+            "max_temp": "-"
+        }]
+
     locations = get_records_locations(data)
 
     if not locations:
@@ -226,11 +246,12 @@ def parse_weather(data):
             "max_temp": "-"
         }]
 
+    target_locations = [normalize_name(x) for x in PINNED_LOCATIONS]
+
     for loc in locations:
         name = get_location_name(loc)
         normalized_name = normalize_name(name)
 
-        # 只顯示釘選地區
         if normalized_name not in target_locations:
             continue
 
@@ -238,14 +259,14 @@ def parse_weather(data):
 
         for element in get_weather_elements(loc):
             element_name = get_element_name(element)
-            elements[element_name] = get_element_times(element)
+            element_times = get_element_times(element)
+            elements[element_name] = element_times
 
-        # CWA 不同資料集的元素名稱可能不同，這裡做相容
         pop_data = (
             elements.get("PoP12h")
             or elements.get("PoP6h")
-            or elements.get("PoP")
             or elements.get("PoP3h")
+            or elements.get("PoP")
             or []
         )
 
@@ -319,6 +340,12 @@ def index():
         "index.html",
         weather=weather
     )
+
+
+@app.route("/debug")
+def debug():
+    data = fetch_weather()
+    return data
 
 
 if __name__ == "__main__":
