@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>天氣監控</title>
+    <title>勤駛皇の天氣預報</title>
     <link rel="manifest" href="/static/manifest.json">
 
     <style>
@@ -78,7 +78,7 @@
             justify-content: flex-start;
             border: 4px solid #5a5a5a;
             box-shadow: 0 12px 24px rgba(0,0,0,0.25);
-            transition: transform 0.2s ease;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
 
         .period-card:hover {
@@ -99,7 +99,7 @@
         }
 
         .night-card {
-            background: linear-gradient(180deg, #14192d 0%, #0e1019 100%);
+            background: linear-gradient(180deg, #071329 0%, #050814 55%, #02040b 100%);
         }
 
         /* 降雨外框顏色 */
@@ -109,18 +109,31 @@
 
         .rain-border-mid {
             border-color: #ff9f1c;
-            box-shadow: 0 0 0 1px rgba(255,159,28,0.25), 0 12px 24px rgba(0,0,0,0.25);
+            box-shadow:
+                0 0 0 1px rgba(255,159,28,0.25),
+                0 12px 24px rgba(0,0,0,0.25);
         }
 
         .rain-border-high {
             border-color: #ff453a;
-            box-shadow: 0 0 0 1px rgba(255,69,58,0.25), 0 12px 24px rgba(0,0,0,0.25);
+            box-shadow:
+                0 0 0 1px rgba(255,69,58,0.35),
+                0 0 28px rgba(255,69,58,0.45),
+                0 0 60px rgba(255,69,58,0.22),
+                0 12px 24px rgba(0,0,0,0.25);
         }
 
         .time-icon {
             font-size: 42px;
             line-height: 1;
             margin-bottom: 10px;
+        }
+
+        .moon-icon {
+            font-size: 56px;
+            text-shadow:
+                0 0 14px rgba(130,180,255,0.85),
+                0 0 30px rgba(70,120,255,0.45);
         }
 
         .period {
@@ -229,6 +242,10 @@
                 font-size: 34px;
             }
 
+            .moon-icon {
+                font-size: 46px;
+            }
+
             .period {
                 font-size: 28px;
                 min-height: auto;
@@ -252,7 +269,7 @@
 <body>
 <div class="page">
 
-    <div class="title">🌦 天氣監控</div>
+    <div class="title">🌦 勤駛皇の天氣預報</div>
     <div class="subtitle">釘選地區：大園區、中壢區｜今日分時段降雨與溫度</div>
 
     <!-- 大園區 -->
@@ -269,22 +286,27 @@
                         {% set time_icon = "🌅" %}
                         {% set time_text = "上午：06 ~ 11" %}
                         {% set time_class = "morning-card" %}
+                        {% set icon_class = "time-icon" %}
                     {% elif w.period == "11-14" %}
                         {% set time_icon = "☀️" %}
                         {% set time_text = "中午：11 ~ 14" %}
                         {% set time_class = "noon-card" %}
+                        {% set icon_class = "time-icon" %}
                     {% elif w.period == "14-17" %}
                         {% set time_icon = "🌤️" %}
                         {% set time_text = "下午：14 ~ 17" %}
                         {% set time_class = "afternoon-card" %}
+                        {% set icon_class = "time-icon" %}
                     {% elif w.period == "17-24" %}
                         {% set time_icon = "🌙" %}
                         {% set time_text = "晚上：17 ~ 24" %}
                         {% set time_class = "night-card" %}
+                        {% set icon_class = "time-icon moon-icon" %}
                     {% else %}
                         {% set time_icon = "🕒" %}
                         {% set time_text = w.period %}
                         {% set time_class = "morning-card" %}
+                        {% set icon_class = "time-icon" %}
                     {% endif %}
 
                     {% if rain_value >= 50 %}
@@ -296,7 +318,7 @@
                     {% endif %}
 
                 <div class="period-card {{ time_class }} {{ rain_border_class }}">
-                    <div class="time-icon">{{ time_icon }}</div>
+                    <div class="{{ icon_class }}">{{ time_icon }}</div>
                     <div class="period">{{ time_text }}</div>
 
                     <div class="rain">
@@ -359,22 +381,27 @@
                         {% set time_icon = "🌅" %}
                         {% set time_text = "上午：06 ~ 11" %}
                         {% set time_class = "morning-card" %}
+                        {% set icon_class = "time-icon" %}
                     {% elif w.period == "11-14" %}
                         {% set time_icon = "☀️" %}
                         {% set time_text = "中午：11 ~ 14" %}
                         {% set time_class = "noon-card" %}
+                        {% set icon_class = "time-icon" %}
                     {% elif w.period == "14-17" %}
                         {% set time_icon = "🌤️" %}
                         {% set time_text = "下午：14 ~ 17" %}
                         {% set time_class = "afternoon-card" %}
+                        {% set icon_class = "time-icon" %}
                     {% elif w.period == "17-24" %}
                         {% set time_icon = "🌙" %}
                         {% set time_text = "晚上：17 ~ 24" %}
                         {% set time_class = "night-card" %}
+                        {% set icon_class = "time-icon moon-icon" %}
                     {% else %}
                         {% set time_icon = "🕒" %}
                         {% set time_text = w.period %}
                         {% set time_class = "morning-card" %}
+                        {% set icon_class = "time-icon" %}
                     {% endif %}
 
                     {% if rain_value >= 50 %}
@@ -386,7 +413,7 @@
                     {% endif %}
 
                 <div class="period-card {{ time_class }} {{ rain_border_class }}">
-                    <div class="time-icon">{{ time_icon }}</div>
+                    <div class="{{ icon_class }}">{{ time_icon }}</div>
                     <div class="period">{{ time_text }}</div>
 
                     <div class="rain">
