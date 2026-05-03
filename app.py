@@ -19,8 +19,7 @@ PERIODS = [
     ("17-24", 17, 24)
 ]
 
-# 桃園市未來1週鄉鎮預報 XML
-# 這版不走 REST API，避免 Resource not found / HTTP 404
+# 桃園市鄉鎮預報 XML
 URL = "https://cwaopendata.s3.ap-northeast-1.amazonaws.com/Forecast/F-D0047-007.xml"
 
 
@@ -93,7 +92,10 @@ def parse_time(text):
 
 
 def get_location_name(location):
-    return get_text_direct(location, ["LocationName", "locationName"])
+    return get_text_direct(
+        location,
+        ["LocationName", "locationName"]
+    )
 
 
 def get_weather_elements(location):
@@ -107,7 +109,10 @@ def get_weather_elements(location):
 
 
 def get_element_name(weather_element):
-    return get_text_direct(weather_element, ["ElementName", "elementName"])
+    return get_text_direct(
+        weather_element,
+        ["ElementName", "elementName"]
+    )
 
 
 def get_times(weather_element):
@@ -146,11 +151,22 @@ def extract_number(time_item):
         "ProbabilityOfPrecipitation",
         "Temperature",
         "MinTemperature",
-        "MaxTemperature"
+        "MaxTemperature",
+        "DewPoint"
     ]
 
     for tag in possible_tags:
         text = get_text_deep(time_item, tag)
+
+        if text:
+            try:
+                return int(float(text))
+            except Exception:
+                continue
+
+    # 備用：直接掃所有文字，抓第一個數字
+    for child in time_item.iter():
+        text = (child.text or "").strip()
 
         if text:
             try:
@@ -163,6 +179,9 @@ def extract_number(time_item):
 
 def collect_locations(root):
     locations = []
+
+    if root is None:
+        return locations
 
     for element in root.iter():
         if is_tag(element, "Location") or is_tag(element, "location"):
@@ -180,6 +199,7 @@ def pick_target_date(element_map):
     for times in element_map.values():
         for time_item in times:
             dt = parse_time(get_start_time(time_item))
+
             if dt:
                 dates.append(dt.date())
 
@@ -212,6 +232,50 @@ def time_overlaps_period(time_item, period_start_hour, period_end_hour, target_d
     return period_start_hour <= start_hour < period_end_hour
 
 
+def is_rain_element(element_name):
+    name = str(element_name)
+
+    return (
+        "PoP" in name
+        or "降雨機率" in name
+        or "降雨" in name
+        or "降水" in name
+    )
+
+
+def is_min_temp_element(element_name):
+    name = str(element_name)
+
+    return (
+        name == "MinT"
+        or "最低溫" in name
+        or "最低溫度" in name
+        or "MinTemperature" in name
+    )
+
+
+def is_max_temp_element(element_name):
+    name = str(element_name)
+
+    return (
+        name == "MaxT"
+        or "最高溫" in name
+        or "最高溫度" in name
+        or "MaxTemperature" in name
+    )
+
+
+def is_temp_element(element_name):
+    name = str(element_name)
+
+    return (
+        name == "T"
+        or name == "溫度"
+        or "Temperature" in name
+        or "平均溫度" in name
+    )
+
+
 def rain_scope_text(rain):
     if rain == "-":
         return "資料不足"
@@ -227,7 +291,8 @@ def rain_scope_text(rain):
         return "局部降雨"
     elif rain >= 20:
         return "零星降雨"
-    return "降雨機率低"
+    else:
+        return "降雨機率低"
 
 
 def parse_weather(root):
@@ -243,17 +308,33 @@ def parse_weather(root):
 
     results = []
     target_names = [normalize_name(x) for x in PINNED_LOCATIONS]
-    locations = collect_locations(root)
+    all_locations = collect_locations(root)
 
-    for location in locations:
-        name = normalize_name(get_location_name(location))
+    # 依照你釘選順序顯示：大園區 → 中壢區
+    for target_name in target_names:
+        target_location = None
 
-        if name not in target_names:
+        for location in all_locations:
+            name = normalize_name(get_location_name(location))
+
+            if name == target_name:
+                target_location = location
+                break
+
+        if target_location is None:
+            results.append({
+                "location": target_name,
+                "period": "找不到此地區",
+                "rain": "-",
+                "min_temp": "-",
+                "max_temp": "-",
+                "scope": "資料不足"
+            })
             continue
 
         element_map = {}
 
-        for weather_element in get_weather_elements(location):
+        for weather_element in get_weather_elements(target_location):
             element_name = get_element_name(weather_element)
             times = get_times(weather_element)
 
@@ -263,27 +344,40 @@ def parse_weather(root):
         target_date = pick_target_date(element_map)
 
         if not target_date:
+            results.append({
+                "location": target_name,
+                "period": "沒有時間資料",
+                "rain": "-",
+                "min_temp": "-",
+                "max_temp": "-",
+                "scope": "資料不足"
+            })
             continue
 
-        rain_data = (
-            element_map.get("PoP12h")
-            or element_map.get("PoP6h")
-            or element_map.get("PoP3h")
-            or element_map.get("PoP")
-            or []
-        )
+        rain_data = []
+        min_temp_data = []
+        max_temp_data = []
+        backup_temp_data = []
 
-        min_temp_data = (
-            element_map.get("MinT")
-            or element_map.get("T")
-            or []
-        )
+        for element_name, times in element_map.items():
+            if is_rain_element(element_name):
+                rain_data.extend(times)
 
-        max_temp_data = (
-            element_map.get("MaxT")
-            or element_map.get("T")
-            or []
-        )
+            if is_min_temp_element(element_name):
+                min_temp_data.extend(times)
+
+            if is_max_temp_element(element_name):
+                max_temp_data.extend(times)
+
+            if is_temp_element(element_name):
+                backup_temp_data.extend(times)
+
+        # 如果 XML 沒有 MinT / MaxT，就用 T 當備援
+        if not min_temp_data:
+            min_temp_data = backup_temp_data
+
+        if not max_temp_data:
+            max_temp_data = backup_temp_data
 
         for label, period_start, period_end in PERIODS:
             rain_probs = []
@@ -291,20 +385,38 @@ def parse_weather(root):
             max_temps = []
 
             for time_item in rain_data:
-                if time_overlaps_period(time_item, period_start, period_end, target_date):
+                if time_overlaps_period(
+                    time_item,
+                    period_start,
+                    period_end,
+                    target_date
+                ):
                     value = extract_number(time_item)
+
                     if value is not None:
                         rain_probs.append(value)
 
             for time_item in min_temp_data:
-                if time_overlaps_period(time_item, period_start, period_end, target_date):
+                if time_overlaps_period(
+                    time_item,
+                    period_start,
+                    period_end,
+                    target_date
+                ):
                     value = extract_number(time_item)
+
                     if value is not None:
                         min_temps.append(value)
 
             for time_item in max_temp_data:
-                if time_overlaps_period(time_item, period_start, period_end, target_date):
+                if time_overlaps_period(
+                    time_item,
+                    period_start,
+                    period_end,
+                    target_date
+                ):
                     value = extract_number(time_item)
+
                     if value is not None:
                         max_temps.append(value)
 
@@ -313,23 +425,13 @@ def parse_weather(root):
             max_temp = max(max_temps) if max_temps else "-"
 
             results.append({
-                "location": name,
+                "location": target_name,
                 "period": label,
                 "rain": rain,
                 "min_temp": min_temp,
                 "max_temp": max_temp,
                 "scope": rain_scope_text(rain)
             })
-
-    if not results:
-        return [{
-            "location": "找不到釘選地區",
-            "period": "大園區 / 中壢區",
-            "rain": "-",
-            "min_temp": "-",
-            "max_temp": "-",
-            "scope": "資料不足"
-        }]
 
     return results
 
@@ -355,18 +457,19 @@ def debug():
             "message": "XML讀取失敗"
         }
 
-    names = []
+    locations = []
 
     for location in collect_locations(root):
         name = get_location_name(location)
+
         if name:
-            names.append(name)
+            locations.append(name)
 
     return {
         "success": True,
         "source": URL,
         "pinned": PINNED_LOCATIONS,
-        "locations": names[:100]
+        "locations": locations[:100]
     }
 
 
