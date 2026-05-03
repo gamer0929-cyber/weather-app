@@ -19,7 +19,8 @@ PERIODS = [
     ("17-24", 17, 24)
 ]
 
-# 桃園市未來1週鄉鎮預報 XML，不走 REST API，避免 404
+# 桃園市未來1週鄉鎮預報 XML
+# 這版不走 REST API，避免 Resource not found / HTTP 404
 URL = "https://cwaopendata.s3.ap-northeast-1.amazonaws.com/Forecast/F-D0047-007.xml"
 
 
@@ -29,42 +30,49 @@ def clean_tag(tag):
     return tag
 
 
-def tag_equals(element, name):
-    return clean_tag(element.tag).lower() == name.lower()
-
-
-def direct_children(element, name):
-    return [child for child in list(element) if tag_equals(child, name)]
-
-
-def first_child_text(element, names):
-    if isinstance(names, str):
-        names = [names]
-
-    for name in names:
-        for child in list(element):
-            if tag_equals(child, name):
-                return (child.text or "").strip()
-
-    return ""
-
-
-def first_desc_text(element, names):
-    if isinstance(names, str):
-        names = [names]
-
-    for name in names:
-        for child in element.iter():
-            if tag_equals(child, name):
-                return (child.text or "").strip()
-
-    return ""
+def is_tag(element, tag_name):
+    return clean_tag(element.tag).lower() == tag_name.lower()
 
 
 def normalize_name(name):
     if not name:
         return ""
     return str(name).replace("臺", "台").strip()
+
+
+def get_text_direct(element, tag_names):
+    if isinstance(tag_names, str):
+        tag_names = [tag_names]
+
+    for child in list(element):
+        for tag_name in tag_names:
+            if is_tag(child, tag_name):
+                return (child.text or "").strip()
+
+    return ""
+
+
+def get_text_deep(element, tag_names):
+    if isinstance(tag_names, str):
+        tag_names = [tag_names]
+
+    for child in element.iter():
+        for tag_name in tag_names:
+            if is_tag(child, tag_name):
+                return (child.text or "").strip()
+
+    return ""
+
+
+def fetch_xml_root():
+    try:
+        response = requests.get(URL, timeout=30, verify=False)
+        response.raise_for_status()
+        return ET.fromstring(response.content)
+
+    except Exception as e:
+        print("XML讀取失敗：", e)
+        return None
 
 
 def parse_time(text):
@@ -84,56 +92,101 @@ def parse_time(text):
         return None
 
 
-def fetch_xml_root():
-    try:
-        response = requests.get(URL, timeout=30, verify=False)
-        response.raise_for_status()
-        return ET.fromstring(response.content)
-
-    except Exception as e:
-        print("XML讀取失敗：", e)
-        return None
-
-
 def get_location_name(location):
-    return first_child_text(location, ["LocationName", "locationName"])
+    return get_text_direct(location, ["LocationName", "locationName"])
 
 
 def get_weather_elements(location):
-    return [
-        child for child in list(location)
-        if tag_equals(child, "WeatherElement") or tag_equals(child, "weatherElement")
-    ]
+    result = []
+
+    for child in list(location):
+        if is_tag(child, "WeatherElement") or is_tag(child, "weatherElement"):
+            result.append(child)
+
+    return result
 
 
 def get_element_name(weather_element):
-    return first_child_text(weather_element, ["ElementName", "elementName"])
+    return get_text_direct(weather_element, ["ElementName", "elementName"])
 
 
 def get_times(weather_element):
-    return [
-        child for child in list(weather_element)
-        if tag_equals(child, "Time") or tag_equals(child, "time")
-    ]
+    result = []
+
+    for child in list(weather_element):
+        if is_tag(child, "Time") or is_tag(child, "time"):
+            result.append(child)
+
+    return result
 
 
 def get_start_time(time_item):
-    return first_child_text(
+    return get_text_direct(
         time_item,
         ["StartTime", "startTime", "DataTime", "dataTime"]
     )
 
 
 def get_end_time(time_item):
-    end_time = first_child_text(
+    end_text = get_text_direct(
         time_item,
         ["EndTime", "endTime"]
     )
 
-    if end_time:
-        return end_time
+    if end_text:
+        return end_text
 
     return get_start_time(time_item)
+
+
+def extract_number(time_item):
+    possible_tags = [
+        "Value",
+        "value",
+        "ProbabilityOfPrecipitation",
+        "Temperature",
+        "MinTemperature",
+        "MaxTemperature"
+    ]
+
+    for tag in possible_tags:
+        text = get_text_deep(time_item, tag)
+
+        if text:
+            try:
+                return int(float(text))
+            except Exception:
+                continue
+
+    return None
+
+
+def collect_locations(root):
+    locations = []
+
+    for element in root.iter():
+        if is_tag(element, "Location") or is_tag(element, "location"):
+            name = get_location_name(element)
+
+            if name:
+                locations.append(element)
+
+    return locations
+
+
+def pick_target_date(element_map):
+    dates = []
+
+    for times in element_map.values():
+        for time_item in times:
+            dt = parse_time(get_start_time(time_item))
+            if dt:
+                dates.append(dt.date())
+
+    if not dates:
+        return None
+
+    return min(dates)
 
 
 def time_overlaps_period(time_item, period_start_hour, period_end_hour, target_date):
@@ -159,57 +212,7 @@ def time_overlaps_period(time_item, period_start_hour, period_end_hour, target_d
     return period_start_hour <= start_hour < period_end_hour
 
 
-def extract_numeric_value(time_item):
-    possible_tags = [
-        "Value",
-        "value",
-        "ProbabilityOfPrecipitation",
-        "Temperature",
-        "MinTemperature",
-        "MaxTemperature"
-    ]
-
-    for tag in possible_tags:
-        text = first_desc_text(time_item, tag)
-
-        if text:
-            try:
-                return int(float(text))
-            except Exception:
-                continue
-
-    return None
-
-
-def collect_locations(root):
-    locations = []
-
-    for element in root.iter():
-        if tag_equals(element, "Location") or tag_equals(element, "location"):
-            name = get_location_name(element)
-
-            if name:
-                locations.append(element)
-
-    return locations
-
-
-def pick_target_date(element_map):
-    dates = []
-
-    for times in element_map.values():
-        for time_item in times:
-            dt = parse_time(get_start_time(time_item))
-            if dt:
-                dates.append(dt.date())
-
-    if not dates:
-        return None
-
-    return min(dates)
-
-
-def rain_level_text(rain):
+def rain_scope_text(rain):
     if rain == "-":
         return "資料不足"
 
@@ -224,8 +227,7 @@ def rain_level_text(rain):
         return "局部降雨"
     elif rain >= 20:
         return "零星降雨"
-    else:
-        return "降雨機率低"
+    return "降雨機率低"
 
 
 def parse_weather(root):
@@ -235,7 +237,8 @@ def parse_weather(root):
             "period": "XML無法讀取",
             "rain": "-",
             "min_temp": "-",
-            "max_temp": "-"
+            "max_temp": "-",
+            "scope": "資料不足"
         }]
 
     results = []
@@ -289,19 +292,19 @@ def parse_weather(root):
 
             for time_item in rain_data:
                 if time_overlaps_period(time_item, period_start, period_end, target_date):
-                    value = extract_numeric_value(time_item)
+                    value = extract_number(time_item)
                     if value is not None:
                         rain_probs.append(value)
 
             for time_item in min_temp_data:
                 if time_overlaps_period(time_item, period_start, period_end, target_date):
-                    value = extract_numeric_value(time_item)
+                    value = extract_number(time_item)
                     if value is not None:
                         min_temps.append(value)
 
             for time_item in max_temp_data:
                 if time_overlaps_period(time_item, period_start, period_end, target_date):
-                    value = extract_numeric_value(time_item)
+                    value = extract_number(time_item)
                     if value is not None:
                         max_temps.append(value)
 
@@ -315,7 +318,7 @@ def parse_weather(root):
                 "rain": rain,
                 "min_temp": min_temp,
                 "max_temp": max_temp,
-                "scope": rain_level_text(rain)
+                "scope": rain_scope_text(rain)
             })
 
     if not results:
@@ -324,7 +327,8 @@ def parse_weather(root):
             "period": "大園區 / 中壢區",
             "rain": "-",
             "min_temp": "-",
-            "max_temp": "-"
+            "max_temp": "-",
+            "scope": "資料不足"
         }]
 
     return results
@@ -351,19 +355,18 @@ def debug():
             "message": "XML讀取失敗"
         }
 
-    locations = []
+    names = []
 
     for location in collect_locations(root):
         name = get_location_name(location)
-
         if name:
-            locations.append(name)
+            names.append(name)
 
     return {
         "success": True,
         "source": URL,
-        "locations": locations[:100],
-        "pinned": PINNED_LOCATIONS
+        "pinned": PINNED_LOCATIONS,
+        "locations": names[:100]
     }
 
 
