@@ -51,10 +51,28 @@
 
         .subtitle {
             text-align: center;
-            font-size: 24px;
+            font-size: 42px;
             color: #d7d7d7;
             margin-bottom: 28px;
-            font-weight: 700;
+            font-weight: 900;
+            letter-spacing: 10px;
+        }
+
+        .weekday-star {
+            color: #ffd60a;
+            text-shadow: 0 0 12px rgba(255, 214, 10, 0.75);
+        }
+
+        .weekday-xing {
+            color: #4da3ff;
+        }
+
+        .weekday-qi {
+            color: #ff9f1c;
+        }
+
+        .weekday-day {
+            color: #ff3b30;
         }
 
         .location-block {
@@ -221,6 +239,10 @@
                 font-size: 54px;
             }
 
+            .subtitle {
+                font-size: 36px;
+            }
+
             .location-title {
                 font-size: 48px;
             }
@@ -236,8 +258,9 @@
             }
 
             .subtitle {
-                font-size: 16px;
+                font-size: 28px;
                 line-height: 1.5;
+                letter-spacing: 6px;
             }
 
             .location-title {
@@ -293,7 +316,11 @@
         の天氣預報
     </div>
 
-    <div class="subtitle">釘選地區：大園區、中壢區｜今日分時段降雨與溫度</div>
+    <div class="subtitle">
+        <span class="weekday-star">星</span>
+        <span class="weekday-xing">期</span>
+        <span id="weekday-text" class="weekday-day"></span>
+    </div>
 
     <section class="location-block">
         <h2 class="location-title"><span class="pin">📍</span>大園區</h2>
@@ -491,13 +518,18 @@
 
 <script>
     const today = new Date();
+
     const year = today.getFullYear();
     const month = String(today.getMonth() + 1).padStart(2, "0");
     const day = String(today.getDate()).padStart(2, "0");
 
+    const weekdayMap = ["日", "一", "二", "三", "四", "五", "六"];
+    const weekday = weekdayMap[today.getDay()];
+
     document.getElementById("year-text").textContent = year;
     document.getElementById("month-text").textContent = month;
     document.getElementById("day-text").textContent = day;
+    document.getElementById("weekday-text").textContent = weekday;
 </script>
 
 </body>
